@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: drupal
+  name: drupal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: drupal
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: drupal
+    spec:
+      volumes:
+      - name: cache-volume
+        emptyDir: {}
+      - name: task-pv-storage
+        persistentVolumeClaim:
+          claimName: drupal-pvc
+      initContainers:
+      - image: drupal:8.6
+        name: init-sites-volume
+        volumeMounts:
+        - name: task-pv-storage
+          mountPath: /data
+        command: [ "/bin/bash", "-c" ]
+        args: [ 'cp -r /var/www/html/sites/ /data/; chown www-data:www-data /data/ -R' ]
+      ###############  
+      containers:
+      - image: drupal:8.6
+        name: drupal
+        #####
+        volumeMounts:
+        - name: cache-volume
+          mountPath: /var/www/html/modules
+          subPath: modules
+          mountPath: /var/www/html/profiles
+          subPath: profiles
+          mountPath: /var/www/html/sites
+          subPath: sites
+          mountPath: /var/www/html/themes
+          subPath: themes
+        ###
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app: drupal
+  name: drupal-service
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+    nodePort: 30095
+  selector:
+    app: drupal
+  type: NodePort
+status:
+  loadBalancer: {}
+
+        
+
+
+
